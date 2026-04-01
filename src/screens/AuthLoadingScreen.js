@@ -6,7 +6,7 @@ export function AuthLoadingScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>EBD Nação Madureira</Text>
-      <ActivityIndicator size="large" color={colors.gold} style={styles.loader} />
+      <ActivityIndicator size="large" color={colors.babyBlue} style={styles.loader} />
     </View>
   );
 }

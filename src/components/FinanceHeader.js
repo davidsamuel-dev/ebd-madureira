@@ -18,5 +18,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
   },
   title: { color: colors.white, fontSize: 18, fontWeight: '700' },
-  balance: { color: colors.gold, marginTop: 4, fontSize: 16 },
+  balance: { color: colors.babyBlue, marginTop: 4, fontSize: 16 },
 });

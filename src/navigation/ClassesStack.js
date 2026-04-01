@@ -32,7 +32,7 @@ export function ClassesStack() {
               style={{ marginRight: 8, padding: 6 }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="add-circle-outline" size={28} color={colors.gold} />
+              <Ionicons name="add-circle-outline" size={28} color={colors.babyBlue} />
             </TouchableOpacity>
           ),
         })}
@@ -65,7 +65,7 @@ export function ClassesStack() {
               style={{ marginRight: 8, padding: 6 }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="add-circle-outline" size={28} color={colors.gold} />
+              <Ionicons name="add-circle-outline" size={28} color={colors.babyBlue} />
             </TouchableOpacity>
           ),
         })}

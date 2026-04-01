@@ -88,7 +88,7 @@ export function AttendanceHomeScreen({ navigation }) {
   if (loadingClasses) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   banner: {
-    backgroundColor: '#f0f4ff',
+    backgroundColor: colors.babyBlueSurface,
     borderRadius: 10,
     padding: 14,
     marginBottom: 20,
@@ -244,12 +244,15 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  classChipSelected: { borderColor: colors.gold, backgroundColor: '#fffbeb' },
+  classChipSelected: {
+    borderColor: colors.babyBlue,
+    backgroundColor: colors.babyBlueSurface,
+  },
   classChipText: { fontSize: 16, color: colors.text },
   classChipTextSelected: { fontWeight: '700', color: colors.navy },
   empty: { color: colors.textMuted, marginBottom: 12 },
   primaryBtn: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

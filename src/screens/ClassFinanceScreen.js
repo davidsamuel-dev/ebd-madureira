@@ -97,7 +97,7 @@ export function ClassFinanceScreen({ navigation, route }) {
           style={{ marginRight: 8, padding: 6 }}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name="add-circle-outline" size={28} color={colors.gold} />
+          <Ionicons name="add-circle-outline" size={28} color={colors.babyBlue} />
         </TouchableOpacity>
       ),
     });
@@ -235,7 +235,7 @@ export function ClassFinanceScreen({ navigation, route }) {
   if (initializing || loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
   },
-  tipoChipOn: { borderColor: colors.gold, backgroundColor: '#fffbeb' },
+  tipoChipOn: { borderColor: colors.babyBlue, backgroundColor: colors.babyBlueSurface },
   tipoTxt: { fontWeight: '600', color: colors.text },
   tipoTxtOn: { color: colors.navy },
   input: {
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 16, color: colors.text },
   modalBtn: {
     marginTop: 20,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

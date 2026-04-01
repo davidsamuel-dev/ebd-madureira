@@ -137,7 +137,7 @@ export function HomeScreen({ navigation }) {
 
       {ok && user && !initializing && stats.loading ? (
         <View style={styles.statsLoading}>
-          <ActivityIndicator size="large" color={colors.gold} />
+          <ActivityIndicator size="large" color={colors.babyBlue} />
         </View>
       ) : (
         <View style={styles.grid}>
@@ -176,11 +176,11 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.white },
   container: { padding: 20, paddingBottom: 32 },
   headerBtn: { marginRight: 8, paddingVertical: 4, paddingHorizontal: 4 },
-  headerBtnText: { color: colors.gold, fontWeight: '700', fontSize: 16 },
+  headerBtnText: { color: colors.babyBlue, fontWeight: '700', fontSize: 16 },
   warnBox: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.babyBlueBanner,
     borderWidth: 1,
-    borderColor: colors.gold,
+    borderColor: colors.babyBlue,
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   warnText: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
   heading: { fontSize: 22, fontWeight: '700', color: colors.navy },
   userLine: { marginTop: 8, fontSize: 14, color: colors.text },
-  badge: { fontWeight: '700', color: colors.gold },
+  badge: { fontWeight: '700', color: colors.babyBlue },
   badgeMuted: { fontWeight: '600', color: colors.textMuted },
   dayLabel: { marginTop: 12, fontSize: 14, fontWeight: '600', color: colors.textMuted },
   statsLoading: { paddingVertical: 24, alignItems: 'center' },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.textMuted, marginBottom: 8 },
   cta: {
     marginTop: 12,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

@@ -35,19 +35,23 @@ function RowComponent({ studentId, nome, presente, biblia, revista, ofertaText, 
           />
         </View>
       </View>
-      <TextInput
-        style={styles.oferta}
-        value={ofertaText}
-        onChangeText={(t) => onPatch(studentId, { ofertaText: t })}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={colors.textMuted}
-      />
+      <View style={styles.ofertaRow}>
+        <Text style={styles.ofertaLabel}>Oferta (R$)</Text>
+        <TextInput
+          style={styles.oferta}
+          value={ofertaText}
+          onChangeText={(t) => onPatch(studentId, { ofertaText: t })}
+          keyboardType="decimal-pad"
+          placeholder="0,00"
+          placeholderTextColor={colors.textMuted}
+          accessibilityLabel={`Oferta em reais para ${nome}`}
+        />
+      </View>
     </View>
   );
 }
 
-const switchTrack = { false: colors.border, true: colors.goldMuted };
+const switchTrack = { false: colors.border, true: colors.babyBlueMuted };
 
 export const StudentAttendanceRow = memo(RowComponent);
 
@@ -61,14 +65,27 @@ const styles = StyleSheet.create({
   switches: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cell: { alignItems: 'center', flex: 1 },
   cellLabel: { fontSize: 10, color: colors.textMuted, marginBottom: 4 },
+  ofertaRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ofertaLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.navy,
+    minWidth: 88,
+    marginRight: 10,
+  },
   oferta: {
-    marginTop: 8,
+    flex: 1,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 6,
+    borderColor: colors.babyBlueMuted,
+    backgroundColor: colors.babyBlueSurface,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 15,
+    paddingVertical: 8,
+    fontSize: 16,
     color: colors.text,
   },
 });

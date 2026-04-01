@@ -83,7 +83,7 @@ export function ClassesListScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -138,14 +138,14 @@ export function ClassesListScreen({ navigation }) {
                   style={styles.iconBtn}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="wallet-outline" size={24} color={colors.gold} />
+                  <Ionicons name="wallet-outline" size={24} color={colors.babyBlue} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('ClassForm', { classId: item.id })}
                   style={styles.iconBtn}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="create-outline" size={24} color={colors.gold} />
+                  <Ionicons name="create-outline" size={24} color={colors.babyBlue} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => confirmDelete(item)}
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   cardMain: { flex: 1, padding: 14 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: colors.navy },
   cardSub: { marginTop: 4, fontSize: 14, color: colors.textMuted },
-  cardHint: { marginTop: 8, fontSize: 13, fontWeight: '600', color: colors.gold },
+  cardHint: { marginTop: 8, fontSize: 13, fontWeight: '600', color: colors.babyBlue },
   cardActions: {
     justifyContent: 'space-between',
     alignItems: 'center',

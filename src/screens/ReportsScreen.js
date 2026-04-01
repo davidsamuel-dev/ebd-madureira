@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   attendanceCollectionRef,
   classesCollectionRef,
+  financeTransactionsCollectionRef,
   lessonsCollectionRef,
   studentsCollectionRef,
 } from '../services/firestoreRefs';
@@ -71,6 +73,9 @@ export function ReportsScreen() {
     freqGeralPct: null,
     ofertaTotal: 0,
     visitantesTotal: 0,
+    entradasExtrasMes: 0,
+    saidasMes: 0,
+    saldoMes: 0,
     emptyHint: '',
   });
 
@@ -104,9 +109,12 @@ export function ReportsScreen() {
 
   const loadReport = useCallback(async () => {
     const prefix = monthPrefixYmd(year, month);
-    const [lessonsSnap, studentsSnap] = await Promise.all([
+    const [lessonsSnap, studentsSnap, txSnap] = await Promise.all([
       getDocs(query(lessonsCollectionRef(), where('id_classe', '==', selectedClassId))),
       getDocs(query(studentsCollectionRef(), where('id_classe', '==', selectedClassId))),
+      getDocs(
+        query(financeTransactionsCollectionRef(), where('id_classe', '==', selectedClassId)),
+      ),
     ]);
 
     const alunosAtivos = studentsSnap.docs.filter(
@@ -142,6 +150,22 @@ export function ReportsScreen() {
     const freqGeralPct =
       denom > 0 ? (totalPresencas / denom) * 100 : aulasNoMes > 0 ? 0 : null;
 
+    let entradasExtrasMes = 0;
+    let saidasMes = 0;
+    txSnap.docs.forEach((d) => {
+      const x = d.data();
+      if (typeof x.data !== 'string' || !x.data.startsWith(prefix)) {
+        return;
+      }
+      const v = Number(x.valor) || 0;
+      if (x.tipo === 'saida') {
+        saidasMes += v;
+      } else {
+        entradasExtrasMes += v;
+      }
+    });
+    const saldoMes = ofertaTotal + entradasExtrasMes - saidasMes;
+
     let emptyHint = '';
     if (aulasNoMes === 0) {
       emptyHint = 'Nenhuma aula registrada neste mês para esta turma.';
@@ -157,6 +181,9 @@ export function ReportsScreen() {
       freqGeralPct,
       ofertaTotal,
       visitantesTotal,
+      entradasExtrasMes,
+      saidasMes,
+      saldoMes,
       emptyHint,
     };
   }, [selectedClassId, year, month]);
@@ -209,6 +236,41 @@ export function ReportsScreen() {
     setYear(y);
   }
 
+  async function shareReport() {
+    const cls = classesRows.find((c) => c.id === selectedClassId);
+    const className = cls?.nome || 'Turma';
+    const monthLabel = `${MONTHS_PT[month - 1]} ${year}`;
+    const r = report;
+    const lines = [
+      'EBD Nação Madureira — Relatório mensual',
+      `Turma: ${className}`,
+      `Período: ${monthLabel}`,
+      '',
+      `Alunos ativos: ${r.alunosAtivos}`,
+      `Aulas no mês: ${r.aulasNoMes}`,
+      `Total de presenças (marcas): ${r.totalPresencas}`,
+      `Frequência geral: ${formatPct(r.freqGeralPct)}`,
+      `Visitantes (soma): ${r.visitantesTotal}`,
+      '',
+      'Financeiro no mês',
+      `Oferta (aulas): ${formatBrl(r.ofertaTotal)}`,
+      `Entradas extras: ${formatBrl(r.entradasExtrasMes)}`,
+      `Saídas: ${formatBrl(r.saidasMes)}`,
+      `Saldo no mês: ${formatBrl(r.saldoMes)}`,
+    ];
+    if (r.emptyHint) {
+      lines.push('', `Obs.: ${r.emptyHint}`);
+    }
+    try {
+      await Share.share({
+        message: lines.join('\n'),
+        title: 'Relatório EBD',
+      });
+    } catch {
+      // cancelamento do compartilhamento
+    }
+  }
+
   async function onRefresh() {
     if (!user || !ok || !selectedClassId) {
       return;
@@ -243,7 +305,7 @@ export function ReportsScreen() {
   if (initializing || classesLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -272,8 +334,8 @@ export function ReportsScreen() {
     >
       <Text style={styles.heading}>Relatórios</Text>
       <Text style={styles.subLead}>
-        Frequência e ofertas por turma e mês (RF06). A frequência geral compara presenças
-        marcadas com alunos ativos × número de aulas no mês.
+        Frequência, ofertas das aulas e movimentação financeira do mês (lançamentos manuais na
+        turma). Use o botão abaixo para compartilhar o resumo (RF08).
       </Text>
 
       {classesRows.length === 0 ? (
@@ -327,7 +389,7 @@ export function ReportsScreen() {
 
           {reportLoading && !refreshing ? (
             <View style={styles.statsLoading}>
-              <ActivityIndicator size="large" color={colors.gold} />
+              <ActivityIndicator size="large" color={colors.babyBlue} />
             </View>
           ) : (
             <View style={styles.grid}>
@@ -347,14 +409,39 @@ export function ReportsScreen() {
                 <Text style={styles.statValue}>{formatPct(report.freqGeralPct)}</Text>
                 <Text style={styles.statLabel}>Frequência geral no mês</Text>
               </View>
+              <Text style={styles.subSection}>Financeiro no mês</Text>
               <View style={[styles.statCard, styles.statCardWide]}>
                 <Text style={styles.statValue}>{formatBrl(report.ofertaTotal)}</Text>
                 <Text style={styles.statLabel}>Oferta (soma das aulas)</Text>
               </View>
               <View style={styles.statCard}>
+                <Text style={[styles.statValue, styles.valPos]}>
+                  {formatBrl(report.entradasExtrasMes)}
+                </Text>
+                <Text style={styles.statLabel}>Entradas extras (manual)</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={[styles.statValue, styles.valNeg]}>
+                  {formatBrl(report.saidasMes)}
+                </Text>
+                <Text style={styles.statLabel}>Saídas (manual)</Text>
+              </View>
+              <View style={[styles.statCard, styles.statCardWide]}>
+                <Text style={styles.statValue}>{formatBrl(report.saldoMes)}</Text>
+                <Text style={styles.statLabel}>Saldo no mês (oferta + extras − saídas)</Text>
+              </View>
+              <View style={styles.statCard}>
                 <Text style={styles.statValue}>{report.visitantesTotal}</Text>
                 <Text style={styles.statLabel}>Visitantes (soma)</Text>
               </View>
+              <TouchableOpacity
+                style={styles.shareBtn}
+                onPress={shareReport}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="share-outline" size={22} color={colors.navy} />
+                <Text style={styles.shareBtnText}>Compartilhar relatório</Text>
+              </TouchableOpacity>
               {report.emptyHint ? (
                 <Text style={styles.hint}>{report.emptyHint}</Text>
               ) : null}
@@ -397,8 +484,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   chipSelected: {
-    borderColor: colors.gold,
-    backgroundColor: '#fffbeb',
+    borderColor: colors.babyBlue,
+    backgroundColor: colors.babyBlueSurface,
   },
   chipText: { fontSize: 14, fontWeight: '600', color: colors.navy },
   chipTextSelected: { color: colors.navyDark },
@@ -413,6 +500,15 @@ const styles = StyleSheet.create({
   monthTitle: { fontSize: 18, fontWeight: '700', color: colors.navy, minWidth: 200, textAlign: 'center' },
   statsLoading: { paddingVertical: 32, alignItems: 'center' },
   grid: { marginTop: 20 },
+  subSection: {
+    marginTop: 8,
+    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  valPos: { color: colors.success },
+  valNeg: { color: colors.error },
   statCard: {
     backgroundColor: '#f8fafc',
     borderRadius: 10,
@@ -424,13 +520,25 @@ const styles = StyleSheet.create({
   statCardWide: { width: '100%' },
   statValue: { fontSize: 26, fontWeight: '800', color: colors.navy },
   statLabel: { marginTop: 4, fontSize: 13, color: colors.textMuted },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.babyBlue,
+    borderRadius: 10,
+  },
+  shareBtnText: { fontSize: 16, fontWeight: '800', color: colors.navy },
   hint: { marginTop: 8, fontSize: 13, color: colors.textMuted, lineHeight: 20 },
   muted: { color: colors.textMuted },
   error: { color: colors.error, textAlign: 'center' },
   warnBox: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.babyBlueBanner,
     borderWidth: 1,
-    borderColor: colors.gold,
+    borderColor: colors.babyBlue,
     borderRadius: 8,
     padding: 12,
   },

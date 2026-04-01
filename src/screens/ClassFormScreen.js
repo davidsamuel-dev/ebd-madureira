@@ -141,7 +141,7 @@ export function ClassFormScreen({ navigation, route }) {
   if (initializing) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -157,7 +157,7 @@ export function ClassFormScreen({ navigation, route }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   primaryBtn: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

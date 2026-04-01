@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   warn: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.babyBlueBanner,
     borderRadius: 8,
     padding: 10,
     marginBottom: 16,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   button: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

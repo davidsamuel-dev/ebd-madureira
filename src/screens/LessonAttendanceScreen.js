@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,12 +31,23 @@ import {
 import { colors } from '../theme/colors';
 
 function parseMoney(text) {
-  const t = String(text ?? '')
+  const s = String(text ?? '')
     .trim()
-    .replace(/\s/g, '')
-    .replace(',', '.');
-  const n = parseFloat(t);
+    .replace(/\s/g, '');
+  if (!s) {
+    return 0;
+  }
+  if (s.includes(',')) {
+    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
+}
+
+function formatBrl(n) {
+  const v = Number(n) || 0;
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 export function LessonAttendanceScreen({ navigation, route }) {
@@ -120,6 +131,11 @@ export function LessonAttendanceScreen({ navigation, route }) {
     };
   }, [lessonId, navigation]);
 
+  const somaOfertasLinhas = useMemo(
+    () => rows.reduce((acc, r) => acc + parseMoney(r.ofertaText), 0),
+    [rows],
+  );
+
   const saveAll = useCallback(async () => {
     if (!lessonId || !lessonMeta) {
       return;
@@ -169,7 +185,7 @@ export function LessonAttendanceScreen({ navigation, route }) {
           disabled={saving || loading}
           style={{ marginRight: 12, padding: 6 }}
         >
-          <Text style={{ color: colors.gold, fontWeight: '800', fontSize: 16 }}>
+          <Text style={{ color: colors.babyBlue, fontWeight: '800', fontSize: 16 }}>
             {saving ? '…' : 'Salvar'}
           </Text>
         </TouchableOpacity>
@@ -188,7 +204,7 @@ export function LessonAttendanceScreen({ navigation, route }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -201,7 +217,11 @@ export function LessonAttendanceScreen({ navigation, route }) {
       {lessonMeta ? (
         <View style={styles.meta}>
           <Text style={styles.metaTitle}>{lessonMeta.tema || 'Aula'}</Text>
-          <Text style={styles.metaSub}>Ao salvar, a oferta total e os visitantes são gravados na aula.</Text>
+          <Text style={styles.metaSub}>
+            Em cada aluno, preencha o campo <Text style={styles.metaStrong}>Oferta (R$)</Text> com o
+            valor trazido (use vírgula para centavos, ex.: 5,50). O total abaixo é atualizado na hora;
+            ao tocar em Salvar, grava a oferta total da turma e os visitantes nesta aula.
+          </Text>
         </View>
       ) : null}
 
@@ -216,6 +236,13 @@ export function LessonAttendanceScreen({ navigation, route }) {
           placeholderTextColor={colors.textMuted}
         />
       </View>
+
+      <View style={styles.totalsBanner}>
+        <Text style={styles.totalsLabel}>Total da oferta (soma dos alunos)</Text>
+        <Text style={styles.totalsValue}>{formatBrl(somaOfertasLinhas)}</Text>
+      </View>
+
+      <Text style={styles.sectionAlunos}>Alunos — presença, materiais e oferta</Text>
 
       <FlatList
         data={rows}
@@ -249,9 +276,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
   },
-  meta: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  meta: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   metaTitle: { fontSize: 17, fontWeight: '800', color: colors.navy },
-  metaSub: { marginTop: 4, color: colors.textMuted, fontSize: 13 },
+  metaSub: { marginTop: 6, color: colors.textMuted, fontSize: 13, lineHeight: 20 },
+  metaStrong: { fontWeight: '700', color: colors.navy },
+  totalsBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: colors.babyBlueSurface,
+    borderWidth: 1,
+    borderColor: colors.babyBlueMuted,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  totalsLabel: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.navy, marginRight: 8 },
+  totalsValue: { fontSize: 18, fontWeight: '800', color: colors.navy },
+  sectionAlunos: {
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   visRow: {
     flexDirection: 'row',
     alignItems: 'center',

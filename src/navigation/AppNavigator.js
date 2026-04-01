@@ -39,7 +39,7 @@ function MainTabs() {
         headerStyle: { backgroundColor: colors.navy },
         headerTintColor: colors.white,
         headerTitleStyle: { fontWeight: '700' },
-        tabBarActiveTintColor: colors.gold,
+        tabBarActiveTintColor: colors.babyBlue,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.white,

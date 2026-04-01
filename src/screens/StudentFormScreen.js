@@ -194,7 +194,7 @@ export function StudentFormScreen({ navigation, route }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.gold} />
+        <ActivityIndicator size="large" color={colors.babyBlue} />
       </View>
     );
   }
@@ -275,7 +275,7 @@ export function StudentFormScreen({ navigation, route }) {
           <Switch
             value={statusAtivo}
             onValueChange={setStatusAtivo}
-            trackColor={{ false: colors.border, true: colors.goldMuted }}
+            trackColor={{ false: colors.border, true: colors.babyBlueMuted }}
             thumbColor={colors.white}
             disabled={saving}
           />
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   meta: { fontSize: 13, color: colors.textMuted, marginBottom: 20 },
   primaryBtn: {
-    backgroundColor: colors.gold,
+    backgroundColor: colors.babyBlue,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
