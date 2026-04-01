@@ -1,14 +1,8 @@
-import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 
-export function SplashScreen({ navigation }) {
-  useEffect(() => {
-    const t = setTimeout(() => navigation.replace('Main'), 800);
-    return () => clearTimeout(t);
-  }, [navigation]);
-
+export function AuthLoadingScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>EBD Nação Madureira</Text>

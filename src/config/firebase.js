@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -55,11 +56,26 @@ export function isFirebaseConfigured() {
 
 export let app;
 export let db;
+export let auth;
+/** Google Analytics (Firebase) — só no ambiente web; o SDK JS não suporta Analytics no runtime nativo do RN. */
+export let analytics = null;
 
 if (isFirebaseConfigured()) {
   const firebaseConfig = buildFirebaseConfig();
 
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
+
+  if (Platform.OS === 'web' && firebaseConfig.measurementId) {
+    try {
+      const { getAnalytics } = require('firebase/analytics');
+      analytics = getAnalytics(app);
+    } catch (e) {
+      if (__DEV__) {
+        console.warn('[Firebase Analytics]', e);
+      }
+    }
+  }
 
   /**
    * RNF03 — cache offline (SDK modular).

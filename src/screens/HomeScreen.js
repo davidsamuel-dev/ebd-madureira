@@ -1,10 +1,27 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useLayoutEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { isFirebaseConfigured } from '../config/firebase';
+import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
-export function HomeScreen() {
+export function HomeScreen({ navigation }) {
+  const { user, signOut, isAdmin } = useAuth();
   const ok = isFirebaseConfigured();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => signOut()}
+          style={styles.headerBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.headerBtnText}>Sair</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, signOut]);
 
   return (
     <View style={styles.container}>
@@ -17,12 +34,27 @@ export function HomeScreen() {
         </View>
       )}
       <Text style={styles.heading}>Dashboard</Text>
-      <Text style={styles.sub}>Presentes, visitantes, oferta e atalho para nova aula (RF07).</Text>
+      {user?.email ? (
+        <Text style={styles.userLine}>
+          {user.email}
+          {isAdmin ? (
+            <Text style={styles.badge}>  ·  Administrador</Text>
+          ) : (
+            <Text style={styles.badgeMuted}>  ·  Professor</Text>
+          )}
+        </Text>
+      ) : null}
+      <Text style={styles.sub}>
+        Presentes, visitantes, oferta e atalho para nova aula (RF07).{'\n\n'}
+        Use as abas no rodapé para Turmas, Chamada e Relatórios.
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  headerBtn: { marginRight: 8, paddingVertical: 4, paddingHorizontal: 4 },
+  headerBtnText: { color: colors.gold, fontWeight: '700', fontSize: 16 },
   container: { flex: 1, padding: 20, backgroundColor: colors.white },
   warnBox: {
     backgroundColor: '#fef3c7',
@@ -35,5 +67,8 @@ const styles = StyleSheet.create({
   warnTitle: { fontWeight: '700', color: colors.navy, marginBottom: 4 },
   warnText: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
   heading: { fontSize: 22, fontWeight: '700', color: colors.navy },
-  sub: { marginTop: 8, color: colors.textMuted },
+  userLine: { marginTop: 8, fontSize: 14, color: colors.text },
+  badge: { fontWeight: '700', color: colors.gold },
+  badgeMuted: { fontWeight: '600', color: colors.textMuted },
+  sub: { marginTop: 12, color: colors.textMuted, lineHeight: 22 },
 });
