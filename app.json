@@ -22,6 +22,9 @@
       },
       "package": "com.adnacaomaddureira.ebd"
     },
-    "scheme": "ebd-madureira"
+    "scheme": "ebd-madureira",
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

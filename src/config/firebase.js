@@ -1,7 +1,9 @@
+import { Platform } from 'react-native';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   getFirestore,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
 } from 'firebase/firestore';
 
@@ -21,17 +23,24 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 /**
- * Firestore com cache persistente (offline) — RNF03 / Firebase modular v10+.
- * `persistentLocalCache()` mantém cópia local dos dados para leitura/escrita sem rede,
- * com sincronização ao voltar online.
+ * RNF03 — persistência offline (Firebase modular v10+).
  *
- * O polyfill em `firebasePolyfill.native.js` habilita IndexedDB no React Native (Expo).
+ * - Web: `persistentLocalCache()` usa IndexedDB (dados persistem entre sessões).
+ * - iOS/Android (Expo + JS SDK): IndexedDB não existe; o cache em disco exige polyfill
+ *   (ex.: expo-sqlite + indexeddbshim) ou SDK nativo (@react-native-firebase).
+ *   Aqui usamos `memoryLocalCache()`: fila de escrita e leitura do cache funcionam
+ *   sem rede enquanto o app estiver em memória; ao fechar o app, o cache some.
+ *
+ * Para cache persistente em dispositivo no Expo, avalie `expo install expo-sqlite` +
+ * política de polyfill compatível com seu ambiente de build, ou migre para
+ * React Native Firebase.
  */
+const localCache =
+  Platform.OS === 'web' ? persistentLocalCache() : memoryLocalCache();
+
 let db;
 try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache(),
-  });
+  db = initializeFirestore(app, { localCache });
 } catch {
   db = getFirestore(app);
 }
