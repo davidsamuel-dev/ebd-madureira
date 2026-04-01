@@ -13,8 +13,23 @@ function requireDb() {
 }
 
 export const classesCollectionRef = () => collection(requireDb(), COLLECTIONS.CLASSES);
+
+export function classDocRef(classId) {
+  return doc(requireDb(), COLLECTIONS.CLASSES, classId);
+}
 export const studentsCollectionRef = () => collection(requireDb(), COLLECTIONS.STUDENTS);
+
+export function studentDocRef(studentId) {
+  return doc(requireDb(), COLLECTIONS.STUDENTS, studentId);
+}
 export const lessonsCollectionRef = () => collection(requireDb(), COLLECTIONS.LESSONS);
+
+export const financeTransactionsCollectionRef = () =>
+  collection(requireDb(), COLLECTIONS.FINANCE_TRANSACTIONS);
+
+export function financeTransactionDocRef(transactionId) {
+  return doc(requireDb(), COLLECTIONS.FINANCE_TRANSACTIONS, transactionId);
+}
 
 export function lessonDocRef(lessonId) {
   return doc(requireDb(), COLLECTIONS.LESSONS, lessonId);
@@ -26,5 +41,15 @@ export function attendanceCollectionRef(lessonId) {
     COLLECTIONS.LESSONS,
     lessonId,
     SUBCOLLECTIONS.ATTENDANCE,
+  );
+}
+
+export function attendanceDocRef(lessonId, studentId) {
+  return doc(
+    requireDb(),
+    COLLECTIONS.LESSONS,
+    lessonId,
+    SUBCOLLECTIONS.ATTENDANCE,
+    studentId,
   );
 }

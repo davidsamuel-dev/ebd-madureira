@@ -6,9 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { ClassesProvider } from '../context/ClassesContext';
-import { AttendanceScreen } from '../screens/AttendanceScreen';
+import { AttendanceStack } from './AttendanceStack';
 import { AuthLoadingScreen } from '../screens/AuthLoadingScreen';
-import { ClassesScreen } from '../screens/ClassesScreen';
+import { ClassesStack } from './ClassesStack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -56,8 +56,16 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
-      <Tab.Screen name="Turmas" component={ClassesScreen} options={{ title: 'Turmas' }} />
-      <Tab.Screen name="Chamada" component={AttendanceScreen} options={{ title: 'Chamada' }} />
+      <Tab.Screen
+        name="Turmas"
+        component={ClassesStack}
+        options={{ title: 'Turmas', headerShown: false }}
+      />
+      <Tab.Screen
+        name="Chamada"
+        component={AttendanceStack}
+        options={{ title: 'Chamada', headerShown: false }}
+      />
       <Tab.Screen name="Relatórios" component={ReportsScreen} options={{ title: 'Relatórios' }} />
     </Tab.Navigator>
   );

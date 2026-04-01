@@ -7,6 +7,7 @@ import {
   memoryLocalCache,
   persistentLocalCache,
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 /**
  * Lê variáveis do `.env` na raiz (EXPO_PUBLIC_*).
@@ -57,6 +58,7 @@ export function isFirebaseConfigured() {
 export let app;
 export let db;
 export let auth;
+export let storage;
 /** Google Analytics (Firebase) — só no ambiente web; o SDK JS não suporta Analytics no runtime nativo do RN. */
 export let analytics = null;
 
@@ -65,6 +67,7 @@ if (isFirebaseConfigured()) {
 
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
+  storage = getStorage(app);
 
   if (Platform.OS === 'web' && firebaseConfig.measurementId) {
     try {
