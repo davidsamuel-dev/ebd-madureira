@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "EBD Madureira",
+    "slug": "ebd-madureira",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a2744"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.adnacaomaddureira.ebd"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a2744"
+      },
+      "package": "com.adnacaomaddureira.ebd"
+    },
+    "scheme": "ebd-madureira"
+  }
+}
