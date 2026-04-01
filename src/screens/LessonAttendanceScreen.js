@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   getDoc,
   getDocs,
@@ -19,7 +20,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
-import { StudentAttendanceRow } from '../components/StudentAttendanceRow';
+import { ChamadaAlunoRow } from '../components/ChamadaAlunoRow';
 import { db } from '../config/firebase';
 import { useClassesContext } from '../context/ClassesContext';
 import {
@@ -45,9 +46,12 @@ function parseMoney(text) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function formatBrl(n) {
-  const v = Number(n) || 0;
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function moneyToInputStr(n) {
+  if (n == null || Number.isNaN(Number(n))) {
+    return '';
+  }
+  const v = Number(n);
+  return v.toFixed(2).replace('.', ',');
 }
 
 export function LessonAttendanceScreen({ navigation, route }) {
@@ -57,12 +61,18 @@ export function LessonAttendanceScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [lessonMeta, setLessonMeta] = useState(null);
   const [rows, setRows] = useState([]);
-  const [visitantesStr, setVisitantesStr] = useState('0');
+  const [bibliasCount, setBibliasCount] = useState(0);
+  const [revistasCount, setRevistasCount] = useState(0);
+  const [visitantesCount, setVisitantesCount] = useState(0);
+  const [ofertaStr, setOfertaStr] = useState('');
+  const [notasStr, setNotasStr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const onPatch = useCallback((studentId, partial) => {
+  const togglePresent = useCallback((studentId) => {
     setRows((prev) =>
-      prev.map((r) => (r.studentId === studentId ? { ...r, ...partial } : r)),
+      prev.map((r) =>
+        r.studentId === studentId ? { ...r, presente: !r.presente } : r,
+      ),
     );
   }, []);
 
@@ -84,7 +94,15 @@ export function LessonAttendanceScreen({ navigation, route }) {
           return;
         }
         setLessonMeta({ id: lessonId, ...lesson });
-        setVisitantesStr(String(lesson.visitantes ?? 0));
+        setBibliasCount(Math.max(0, Number(lesson.total_biblias) || 0));
+        setRevistasCount(Math.max(0, Number(lesson.total_revistas) || 0));
+        setVisitantesCount(Math.max(0, Number(lesson.visitantes) || 0));
+        setOfertaStr(
+          lesson.total_oferta != null && lesson.total_oferta !== ''
+            ? moneyToInputStr(lesson.total_oferta)
+            : '',
+        );
+        setNotasStr(typeof lesson.observacao === 'string' ? lesson.observacao : '');
 
         const idClasse = lesson.id_classe;
         const stSnap = await getDocs(
@@ -107,9 +125,6 @@ export function LessonAttendanceScreen({ navigation, route }) {
             studentId: d.id,
             nome: x.nome || '',
             presente: a?.presente ?? false,
-            biblia: a?.biblia ?? false,
-            revista: a?.revista ?? false,
-            ofertaText: a?.oferta_individual != null ? String(a.oferta_individual) : '',
           });
         });
         list.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -131,39 +146,33 @@ export function LessonAttendanceScreen({ navigation, route }) {
     };
   }, [lessonId, navigation]);
 
-  const somaOfertasLinhas = useMemo(
-    () => rows.reduce((acc, r) => acc + parseMoney(r.ofertaText), 0),
-    [rows],
-  );
-
   const saveAll = useCallback(async () => {
     if (!lessonId || !lessonMeta) {
       return;
     }
     setSaving(true);
     try {
-      let sum = 0;
       const batch = writeBatch(db);
       for (const r of rows) {
-        const val = parseMoney(r.ofertaText);
-        sum += val;
         batch.set(
           attendanceDocRef(lessonId, r.studentId),
           {
             id_aluno: r.studentId,
             presente: Boolean(r.presente),
-            biblia: Boolean(r.biblia),
-            revista: Boolean(r.revista),
-            oferta_individual: val,
+            biblia: false,
+            revista: false,
+            oferta_individual: 0,
           },
           { merge: true },
         );
       }
-      const vis = parseInt(String(visitantesStr).trim(), 10);
-      const visitantes = Number.isFinite(vis) && vis >= 0 ? vis : 0;
+      const totalOferta = parseMoney(ofertaStr);
       batch.update(lessonDocRef(lessonId), {
-        total_oferta: sum,
-        visitantes,
+        total_oferta: totalOferta,
+        visitantes: visitantesCount,
+        total_biblias: bibliasCount,
+        total_revistas: revistasCount,
+        observacao: notasStr.trim(),
       });
       await batch.commit();
       setActiveLesson(null);
@@ -175,7 +184,18 @@ export function LessonAttendanceScreen({ navigation, route }) {
     } finally {
       setSaving(false);
     }
-  }, [lessonId, lessonMeta, rows, visitantesStr, navigation, setActiveLesson]);
+  }, [
+    lessonId,
+    lessonMeta,
+    rows,
+    ofertaStr,
+    visitantesCount,
+    bibliasCount,
+    revistasCount,
+    notasStr,
+    navigation,
+    setActiveLesson,
+  ]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -192,6 +212,34 @@ export function LessonAttendanceScreen({ navigation, route }) {
       ),
     });
   }, [navigation, saveAll, saving, loading]);
+
+  function Stepper({ label, value, onChange, icon }) {
+    return (
+      <View style={styles.stepRow}>
+        <View style={styles.stepLabelWrap}>
+          {icon ? <Ionicons name={icon} size={22} color={colors.navy} style={styles.stepIcon} /> : null}
+          <Text style={styles.stepLabel}>{label}</Text>
+        </View>
+        <View style={styles.stepControls}>
+          <TouchableOpacity
+            style={styles.stepBtn}
+            onPress={() => onChange(Math.max(0, value - 1))}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="remove-circle-outline" size={32} color={colors.babyBlueMuted} />
+          </TouchableOpacity>
+          <Text style={styles.stepValue}>{value}</Text>
+          <TouchableOpacity
+            style={styles.stepBtn}
+            onPress={() => onChange(value + 1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="add-circle-outline" size={32} color={colors.babyBlueMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (!lessonId) {
     return (
@@ -214,116 +262,182 @@ export function LessonAttendanceScreen({ navigation, route }) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {lessonMeta ? (
-        <View style={styles.meta}>
-          <Text style={styles.metaTitle}>{lessonMeta.tema || 'Aula'}</Text>
-          <Text style={styles.metaSub}>
-            Em cada aluno, preencha o campo <Text style={styles.metaStrong}>Oferta (R$)</Text> com o
-            valor trazido (use vírgula para centavos, ex.: 5,50). O total abaixo é atualizado na hora;
-            ao tocar em Salvar, grava a oferta total da turma e os visitantes nesta aula.
-          </Text>
-        </View>
-      ) : null}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {lessonMeta ? (
+          <View style={styles.meta}>
+            <Text style={styles.metaTitle}>{lessonMeta.tema || 'Aula'}</Text>
+          </View>
+        ) : null}
 
-      <View style={styles.visRow}>
-        <Text style={styles.visLabel}>Visitantes</Text>
-        <TextInput
-          style={styles.visInput}
-          value={visitantesStr}
-          onChangeText={setVisitantesStr}
-          keyboardType="number-pad"
-          placeholder="0"
-          placeholderTextColor={colors.textMuted}
-        />
-      </View>
+        <Text style={styles.sectionTitle}>Chamada dos alunos</Text>
+        <Text style={styles.hint}>
+          Toque no nome de cada aluno para marcar se esteve presente ou ausente.
+        </Text>
 
-      <View style={styles.totalsBanner}>
-        <Text style={styles.totalsLabel}>Total da oferta (soma dos alunos)</Text>
-        <Text style={styles.totalsValue}>{formatBrl(somaOfertasLinhas)}</Text>
-      </View>
-
-      <Text style={styles.sectionAlunos}>Alunos — presença, materiais e oferta</Text>
-
-      <FlatList
-        data={rows}
-        keyExtractor={(item) => item.studentId}
-        contentContainerStyle={styles.list}
-        extraData={rows}
-        renderItem={({ item }) => (
-          <StudentAttendanceRow
-            studentId={item.studentId}
+        {rows.map((item) => (
+          <ChamadaAlunoRow
+            key={item.studentId}
             nome={item.nome}
             presente={item.presente}
-            biblia={item.biblia}
-            revista={item.revista}
-            ofertaText={item.ofertaText}
-            onPatch={onPatch}
+            onToggle={() => togglePresent(item.studentId)}
           />
-        )}
-        ListEmptyComponent={
+        ))}
+
+        {rows.length === 0 ? (
           <Text style={styles.muted}>Nenhum aluno ativo nesta turma.</Text>
-        }
-      />
+        ) : null}
+
+        <View style={styles.reportCard}>
+          <Text style={styles.sectionTitle}>Relatório da classe</Text>
+          <Text style={styles.hint}>
+            Use as setas para informar o total de bíblias, revistas e visitantes. A oferta é o valor
+            único da turma nesta aula.
+          </Text>
+
+          <Stepper
+            label="Bíblias"
+            value={bibliasCount}
+            onChange={setBibliasCount}
+            icon="book-outline"
+          />
+          <Stepper
+            label="Revistas"
+            value={revistasCount}
+            onChange={setRevistasCount}
+            icon="newspaper-outline"
+          />
+          <Stepper
+            label="Visitantes"
+            value={visitantesCount}
+            onChange={setVisitantesCount}
+            icon="people-outline"
+          />
+
+          <Text style={styles.ofertaLabel}>Oferta (R$)</Text>
+          <View style={styles.ofertaRow}>
+            <Text style={styles.ofertaPrefix}>R$</Text>
+            <TextInput
+              style={styles.ofertaInput}
+              value={ofertaStr}
+              onChangeText={setOfertaStr}
+              keyboardType="decimal-pad"
+              placeholder="0,00"
+              placeholderTextColor={colors.textMuted}
+              accessibilityLabel="Valor total da oferta em reais"
+            />
+          </View>
+
+          <Text style={styles.notasLabel}>Anotação</Text>
+          <TextInput
+            style={styles.notasInput}
+            value={notasStr}
+            onChangeText={setNotasStr}
+            placeholder="Insira uma anotação"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.white },
+  scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.white,
   },
-  meta: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  metaTitle: { fontSize: 17, fontWeight: '800', color: colors.navy },
-  metaSub: { marginTop: 6, color: colors.textMuted, fontSize: 13, lineHeight: 20 },
-  metaStrong: { fontWeight: '700', color: colors.navy },
-  totalsBanner: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: colors.babyBlueSurface,
-    borderWidth: 1,
-    borderColor: colors.babyBlueMuted,
+  meta: { paddingBottom: 8 },
+  metaTitle: { fontSize: 18, fontWeight: '800', color: colors.navy },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.navy,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  hint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  reportCard: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  totalsLabel: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.navy, marginRight: 8 },
-  totalsValue: { fontSize: 18, fontWeight: '800', color: colors.navy },
-  sectionAlunos: {
-    paddingHorizontal: 16,
-    paddingBottom: 6,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  visRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  visLabel: { flex: 1, fontWeight: '700', color: colors.navy },
-  visInput: {
-    width: 80,
+  stepLabelWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  stepIcon: { marginRight: 10 },
+  stepLabel: { fontSize: 16, fontWeight: '600', color: colors.navy },
+  stepControls: { flexDirection: 'row', alignItems: 'center' },
+  stepBtn: { padding: 4 },
+  stepValue: {
+    minWidth: 36,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.navy,
+  },
+  ofertaLabel: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.navy,
+    marginBottom: 8,
+  },
+  ofertaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.babyBlueMuted,
+    backgroundColor: colors.babyBlueSurface,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  ofertaPrefix: { fontSize: 18, fontWeight: '700', color: colors.navy, marginRight: 6 },
+  ofertaInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  notasLabel: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.navy,
+    marginBottom: 8,
+  },
+  notasInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 16,
-    textAlign: 'right',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
     color: colors.text,
+    minHeight: 88,
+    marginBottom: 8,
   },
-  list: { paddingHorizontal: 16, paddingBottom: 32 },
-  muted: { color: colors.textMuted, textAlign: 'center', marginTop: 24 },
+  muted: { color: colors.textMuted, textAlign: 'center', marginVertical: 24 },
 });
