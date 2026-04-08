@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,18 +12,22 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { addDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, orderBy, query, serverTimestamp, writeBatch } from 'firebase/firestore';
 
+import { db } from '../config/firebase';
 import { useClassesContext } from '../context/ClassesContext';
 import { classesCollectionRef, lessonsCollectionRef } from '../services/firestoreRefs';
 import { colors } from '../theme/colors';
 import { formatDateBr, parseYmd, ymdFromDate } from '../utils/date';
 
+function newSessionId() {
+  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export function AttendanceHomeScreen({ navigation }) {
   const { activeLesson, setActiveLesson } = useClassesContext();
   const [classesList, setClassesList] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
-  const [selectedClassId, setSelectedClassId] = useState(null);
   const [tema, setTema] = useState('');
   const [dataYmd, setDataYmd] = useState(() => ymdFromDate(new Date()));
   const [showPicker, setShowPicker] = useState(false);
@@ -44,35 +47,46 @@ export function AttendanceHomeScreen({ navigation }) {
   }
 
   async function startLesson() {
-    if (!selectedClassId) {
-      Alert.alert('Turma', 'Selecione uma turma.');
-      return;
-    }
     const t = tema.trim();
     if (!t) {
       Alert.alert('Tema', 'Informe o tema da lição.');
       return;
     }
-    const cls = classesList.find((c) => c.id === selectedClassId);
+    if (classesList.length === 0) {
+      Alert.alert('Turmas', 'Cadastre ao menos uma turma na aba Turmas.');
+      return;
+    }
     setSaving(true);
     try {
-      const ref = await addDoc(lessonsCollectionRef(), {
-        id_classe: selectedClassId,
-        data: dataYmd,
-        tema: t,
-        total_oferta: 0,
-        visitantes: 0,
-        created_at: serverTimestamp(),
+      const sessionId = newSessionId();
+      const batch = writeBatch(db);
+      for (const c of classesList) {
+        const ref = doc(lessonsCollectionRef());
+        batch.set(ref, {
+          id_classe: c.id,
+          data: dataYmd,
+          tema: t,
+          session_id: sessionId,
+          chamada_concluida: false,
+          total_oferta: 0,
+          visitantes: 0,
+          total_biblias: 0,
+          total_revistas: 0,
+          observacao: '',
+          created_at: serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      setActiveLesson(null);
+      navigation.getParent()?.navigate('Aulas', {
+        screen: 'SessionDetail',
+        params: {
+          sessionKey: sessionId,
+          sessionId,
+        },
       });
-      const payload = {
-        lessonId: ref.id,
-        id_classe: selectedClassId,
-        tema: t,
-        data: dataYmd,
-        className: cls?.nome ?? 'Turma',
-      };
-      setActiveLesson(payload);
-      navigation.navigate('LessonAttendance', { lessonId: ref.id });
+    } catch (e) {
+      Alert.alert('Erro', e?.message ?? 'Não foi possível criar as aulas.');
     } finally {
       setSaving(false);
     }
@@ -101,7 +115,7 @@ export function AttendanceHomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {activeLesson ? (
           <View style={styles.banner}>
-            <Text style={styles.bannerTitle}>Aula em andamento</Text>
+            <Text style={styles.bannerTitle}>Chamada em andamento</Text>
             <Text style={styles.bannerText}>
               {activeLesson.className} · {activeLesson.tema}
             </Text>
@@ -110,39 +124,28 @@ export function AttendanceHomeScreen({ navigation }) {
               <Text style={styles.primaryBtnText}>Continuar chamada</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.linkBtn} onPress={clearActive}>
-              <Text style={styles.linkText}>Descartar e iniciar outra</Text>
+              <Text style={styles.linkText}>Descartar</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
-        <Text style={styles.section}>Nova aula</Text>
-        <Text style={styles.label}>Turma</Text>
-        <FlatList
-          data={classesList}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.classChip,
-                selectedClassId === item.id && styles.classChipSelected,
-              ]}
-              onPress={() => setSelectedClassId(item.id)}
-            >
-              <Text
-                style={[
-                  styles.classChipText,
-                  selectedClassId === item.id && styles.classChipTextSelected,
-                ]}
-              >
-                {item.nome || '(Sem nome)'}
+        <Text style={styles.section}>Nova aula (todas as turmas)</Text>
+        <Text style={styles.info}>
+          Será criada uma aula para cada turma cadastrada, na mesma data e tema. Depois, abra a aba
+          Aulas para ver o progresso e registrar a chamada de cada turma.
+        </Text>
+        <Text style={styles.label}>Turmas incluídas ({classesList.length})</Text>
+        <View style={styles.classList}>
+          {classesList.length === 0 ? (
+            <Text style={styles.empty}>Nenhuma turma cadastrada.</Text>
+          ) : (
+            classesList.map((c) => (
+              <Text key={c.id} style={styles.classLine}>
+                · {c.nome || '(Sem nome)'}
               </Text>
-            </TouchableOpacity>
+            ))
           )}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Cadastre uma turma na aba Turmas.</Text>
-          }
-        />
+        </View>
 
         <Text style={styles.label}>Tema da lição</Text>
         <TextInput
@@ -188,15 +191,12 @@ export function AttendanceHomeScreen({ navigation }) {
         )}
 
         <TouchableOpacity
-          style={[
-            styles.primaryBtn,
-            (!selectedClassId || !tema.trim() || saving) && styles.btnDisabled,
-          ]}
+          style={[styles.primaryBtn, (!tema.trim() || saving || classesList.length === 0) && styles.btnDisabled]}
           onPress={startLesson}
-          disabled={!selectedClassId || !tema.trim() || saving}
+          disabled={!tema.trim() || saving || classesList.length === 0}
         >
           <Text style={styles.primaryBtnText}>
-            {saving ? 'Abrindo…' : 'Iniciar aula e abrir chamada'}
+            {saving ? 'Criando…' : 'Criar aulas e abrir sessão'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -224,8 +224,23 @@ const styles = StyleSheet.create({
   bannerTitle: { fontWeight: '800', color: colors.navy, marginBottom: 6 },
   bannerText: { color: colors.text, fontSize: 15 },
   bannerMeta: { color: colors.textMuted, marginTop: 4, marginBottom: 12 },
-  section: { fontSize: 18, fontWeight: '700', color: colors.navy, marginBottom: 12 },
+  section: { fontSize: 18, fontWeight: '700', color: colors.navy, marginBottom: 8 },
+  info: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
   label: { fontSize: 14, fontWeight: '600', color: colors.navy, marginBottom: 8, marginTop: 8 },
+  classList: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: '#f8fafc',
+  },
+  classLine: { fontSize: 15, color: colors.text, marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -237,19 +252,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dateText: { fontSize: 16, color: colors.text },
-  classChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  classChipSelected: {
-    borderColor: colors.babyBlue,
-    backgroundColor: colors.babyBlueSurface,
-  },
-  classChipText: { fontSize: 16, color: colors.text },
-  classChipTextSelected: { fontWeight: '700', color: colors.navy },
   empty: { color: colors.textMuted, marginBottom: 12 },
   primaryBtn: {
     backgroundColor: colors.babyBlue,

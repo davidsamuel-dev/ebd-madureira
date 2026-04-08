@@ -32,3 +32,21 @@ export function formatDateBr(ymd) {
 export function monthPrefixYmd(year, month1to12) {
   return `${year}-${String(month1to12).padStart(2, '0')}`;
 }
+
+/**
+ * Campo `data` do documento de aula no Firestore: string YYYY-MM-DD ou Timestamp.
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+export function lessonDataYmd(value) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object' && typeof value.toDate === 'function') {
+    return ymdFromDate(value.toDate());
+  }
+  return null;
+}

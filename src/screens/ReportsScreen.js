@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -22,7 +23,21 @@ import {
   studentsCollectionRef,
 } from '../services/firestoreRefs';
 import { colors } from '../theme/colors';
-import { monthPrefixYmd } from '../utils/date';
+import { lessonDataYmd, monthPrefixYmd } from '../utils/date';
+
+/** String ou DocumentReference do Firestore no campo `id_classe`. */
+function normalizeClassIdField(value) {
+  if (value == null) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'object' && typeof value.id === 'string') {
+    return value.id;
+  }
+  return '';
+}
 
 const MONTHS_PT = [
   'Janeiro',
@@ -73,6 +88,8 @@ export function ReportsScreen() {
     freqGeralPct: null,
     ofertaTotal: 0,
     visitantesTotal: 0,
+    totalBibliasMes: 0,
+    totalRevistasMes: 0,
     entradasExtrasMes: 0,
     saidasMes: 0,
     saldoMes: 0,
@@ -109,32 +126,46 @@ export function ReportsScreen() {
 
   const loadReport = useCallback(async () => {
     const prefix = monthPrefixYmd(year, month);
-    const [lessonsSnap, studentsSnap, txSnap] = await Promise.all([
-      getDocs(query(lessonsCollectionRef(), where('id_classe', '==', selectedClassId))),
-      getDocs(query(studentsCollectionRef(), where('id_classe', '==', selectedClassId))),
-      getDocs(
-        query(financeTransactionsCollectionRef(), where('id_classe', '==', selectedClassId)),
-      ),
+
+    async function docsForClass(collectionRefFn, fieldName) {
+      const q1 = query(collectionRefFn(), where(fieldName, '==', selectedClassId));
+      let snap = await getDocs(q1);
+      if (!snap.empty) {
+        return snap.docs;
+      }
+      const all = await getDocs(collectionRefFn());
+      return all.docs.filter((doc) => normalizeClassIdField(doc.data()?.[fieldName]) === selectedClassId);
+    }
+
+    const [lessonDocs, studentDocs, txDocs] = await Promise.all([
+      docsForClass(lessonsCollectionRef, 'id_classe'),
+      docsForClass(studentsCollectionRef, 'id_classe'),
+      docsForClass(financeTransactionsCollectionRef, 'id_classe'),
     ]);
 
-    const alunosAtivos = studentsSnap.docs.filter(
-      (d) => d.data()?.status !== 'inativo',
-    ).length;
+    const alunosAtivos = studentDocs.filter((d) => d.data()?.status !== 'inativo').length;
 
-    const lessonsInMonth = lessonsSnap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((l) => typeof l.data === 'string' && l.data.startsWith(prefix));
+    const lessonsInMonth = lessonDocs.filter((d) => {
+      const ymd = lessonDataYmd(d.data()?.data);
+      return ymd != null && ymd.startsWith(prefix);
+    });
 
     let totalPresencas = 0;
     let ofertaTotal = 0;
     let visitantesTotal = 0;
+    let totalBibliasMes = 0;
+    let totalRevistasMes = 0;
 
     for (let i = 0; i < lessonsInMonth.length; i++) {
-      const les = lessonsInMonth[i];
+      const d = lessonsInMonth[i];
+      const les = d.data();
+      const lessonId = d.id;
       ofertaTotal += Number(les.total_oferta) || 0;
       visitantesTotal += Number(les.visitantes) || 0;
+      totalBibliasMes += Number(les.total_biblias) || 0;
+      totalRevistasMes += Number(les.total_revistas) || 0;
       try {
-        const attSnap = await getDocs(attendanceCollectionRef(les.id));
+        const attSnap = await getDocs(attendanceCollectionRef(lessonId));
         attSnap.forEach((ad) => {
           if (ad.data()?.presente) {
             totalPresencas += 1;
@@ -152,9 +183,10 @@ export function ReportsScreen() {
 
     let entradasExtrasMes = 0;
     let saidasMes = 0;
-    txSnap.docs.forEach((d) => {
+    txDocs.forEach((d) => {
       const x = d.data();
-      if (typeof x.data !== 'string' || !x.data.startsWith(prefix)) {
+      const txYmd = lessonDataYmd(x.data);
+      if (txYmd == null || !txYmd.startsWith(prefix)) {
         return;
       }
       const v = Number(x.valor) || 0;
@@ -181,6 +213,8 @@ export function ReportsScreen() {
       freqGeralPct,
       ofertaTotal,
       visitantesTotal,
+      totalBibliasMes,
+      totalRevistasMes,
       entradasExtrasMes,
       saidasMes,
       saldoMes,
@@ -188,14 +222,30 @@ export function ReportsScreen() {
     };
   }, [selectedClassId, year, month]);
 
-  useEffect(() => {
+  const loadReportToState = useCallback(async () => {
     if (!ok || initializing || !user || !selectedClassId) {
-      return undefined;
+      return;
     }
+    setReportLoading(true);
+    try {
+      const r = await loadReport();
+      setReport(r);
+    } catch (e) {
+      setReport((prev) => ({
+        ...prev,
+        emptyHint: e?.message ?? 'Erro ao montar o relatório.',
+      }));
+    } finally {
+      setReportLoading(false);
+    }
+  }, [ok, initializing, user, selectedClassId, loadReport]);
 
+  useEffect(() => {
     let cancelled = false;
-
     (async () => {
+      if (!ok || initializing || !user || !selectedClassId) {
+        return;
+      }
       setReportLoading(true);
       try {
         const r = await loadReport();
@@ -215,11 +265,16 @@ export function ReportsScreen() {
         }
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [ok, user, initializing, selectedClassId, loadReport]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReportToState();
+    }, [loadReportToState]),
+  );
 
   function shiftMonth(delta) {
     let m = month + delta;
@@ -251,6 +306,8 @@ export function ReportsScreen() {
       `Total de presenças (marcas): ${r.totalPresencas}`,
       `Frequência geral: ${formatPct(r.freqGeralPct)}`,
       `Visitantes (soma): ${r.visitantesTotal}`,
+      `Bíblias (soma das aulas): ${r.totalBibliasMes}`,
+      `Revistas (soma das aulas): ${r.totalRevistasMes}`,
       '',
       'Financeiro no mês',
       `Oferta (aulas): ${formatBrl(r.ofertaTotal)}`,
@@ -433,6 +490,14 @@ export function ReportsScreen() {
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>{report.visitantesTotal}</Text>
                 <Text style={styles.statLabel}>Visitantes (soma)</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{report.totalBibliasMes}</Text>
+                <Text style={styles.statLabel}>Bíblias (soma no mês)</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{report.totalRevistasMes}</Text>
+                <Text style={styles.statLabel}>Revistas (soma no mês)</Text>
               </View>
               <TouchableOpacity
                 style={styles.shareBtn}

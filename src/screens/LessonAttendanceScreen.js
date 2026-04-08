@@ -1,3 +1,4 @@
+import { useRoute } from '@react-navigation/native';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -54,8 +55,10 @@ function moneyToInputStr(n) {
   return v.toFixed(2).replace('.', ',');
 }
 
-export function LessonAttendanceScreen({ navigation, route }) {
+export function LessonAttendanceScreen({ navigation }) {
+  const route = useRoute();
   const lessonId = route.params?.lessonId;
+  const origin = route.params?.origin ?? 'chamada';
   const { setActiveLesson } = useClassesContext();
 
   const [loading, setLoading] = useState(true);
@@ -173,11 +176,32 @@ export function LessonAttendanceScreen({ navigation, route }) {
         total_biblias: bibliasCount,
         total_revistas: revistasCount,
         observacao: notasStr.trim(),
+        chamada_concluida: true,
       });
       await batch.commit();
       setActiveLesson(null);
+      const sid = lessonMeta?.session_id;
       Alert.alert('Salvo', 'Chamada registrada.', [
-        { text: 'OK', onPress: () => navigation.navigate('AttendanceHome') },
+        {
+          text: 'OK',
+          onPress: () => {
+            if (origin === 'lessons') {
+              if (sid) {
+                navigation.navigate('SessionDetail', {
+                  sessionId: sid,
+                  sessionKey: sid,
+                });
+              } else {
+                navigation.navigate('SessionDetail', {
+                  sessionKey: `legacy:${lessonId}`,
+                  sessionId: null,
+                });
+              }
+            } else {
+              navigation.navigate('Chamada', { screen: 'AttendanceHome' });
+            }
+          },
+        },
       ]);
     } catch (e) {
       Alert.alert('Erro', e?.message ?? 'Não foi possível salvar.');
@@ -195,6 +219,7 @@ export function LessonAttendanceScreen({ navigation, route }) {
     notasStr,
     navigation,
     setActiveLesson,
+    origin,
   ]);
 
   useLayoutEffect(() => {
@@ -212,34 +237,6 @@ export function LessonAttendanceScreen({ navigation, route }) {
       ),
     });
   }, [navigation, saveAll, saving, loading]);
-
-  function Stepper({ label, value, onChange, icon }) {
-    return (
-      <View style={styles.stepRow}>
-        <View style={styles.stepLabelWrap}>
-          {icon ? <Ionicons name={icon} size={22} color={colors.navy} style={styles.stepIcon} /> : null}
-          <Text style={styles.stepLabel}>{label}</Text>
-        </View>
-        <View style={styles.stepControls}>
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onChange(Math.max(0, value - 1))}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="remove-circle-outline" size={32} color={colors.babyBlueMuted} />
-          </TouchableOpacity>
-          <Text style={styles.stepValue}>{value}</Text>
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onChange(value + 1)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="add-circle-outline" size={32} color={colors.babyBlueMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   if (!lessonId) {
     return (
@@ -298,19 +295,19 @@ export function LessonAttendanceScreen({ navigation, route }) {
             único da turma nesta aula.
           </Text>
 
-          <Stepper
+          <RelatorioStepper
             label="Bíblias"
             value={bibliasCount}
             onChange={setBibliasCount}
             icon="book-outline"
           />
-          <Stepper
+          <RelatorioStepper
             label="Revistas"
             value={revistasCount}
             onChange={setRevistasCount}
             icon="newspaper-outline"
           />
-          <Stepper
+          <RelatorioStepper
             label="Visitantes"
             value={visitantesCount}
             onChange={setVisitantesCount}
@@ -441,3 +438,31 @@ const styles = StyleSheet.create({
   },
   muted: { color: colors.textMuted, textAlign: 'center', marginVertical: 24 },
 });
+
+function RelatorioStepper({ label, value, onChange, icon }) {
+  return (
+    <View style={styles.stepRow}>
+      <View style={styles.stepLabelWrap}>
+        {icon ? <Ionicons name={icon} size={22} color={colors.navy} style={styles.stepIcon} /> : null}
+        <Text style={styles.stepLabel}>{label}</Text>
+      </View>
+      <View style={styles.stepControls}>
+        <TouchableOpacity
+          style={styles.stepBtn}
+          onPress={() => onChange(Math.max(0, value - 1))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="remove-circle-outline" size={32} color={colors.babyBlueMuted} />
+        </TouchableOpacity>
+        <Text style={styles.stepValue}>{value}</Text>
+        <TouchableOpacity
+          style={styles.stepBtn}
+          onPress={() => onChange(value + 1)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="add-circle-outline" size={32} color={colors.babyBlueMuted} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}

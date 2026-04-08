@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { attendanceCollectionRef, lessonsCollectionRef } from '../services/firestoreRefs';
 import { colors } from '../theme/colors';
 import { formatDateBr, ymdFromDate } from '../utils/date';
+import { groupLessonsIntoSessions } from '../utils/sessionLessons';
 
 function formatBrl(n) {
   const v = Number(n) || 0;
@@ -33,6 +34,7 @@ export function HomeScreen({ navigation }) {
     oferta: 0,
     aulasHoje: 0,
   });
+  const [todaySessions, setTodaySessions] = useState([]);
 
   const todayYmd = ymdFromDate(new Date());
 
@@ -80,6 +82,7 @@ export function HomeScreen({ navigation }) {
             // ignora falha em uma subcoleção
           }
         }
+        setTodaySessions(groupLessonsIntoSessions(docs));
         setStats((prev) => ({
           ...prev,
           loading: false,
@@ -135,6 +138,36 @@ export function HomeScreen({ navigation }) {
 
       <Text style={styles.dayLabel}>Hoje · {formatDateBr(todayYmd)}</Text>
 
+      {ok && user && !initializing && !stats.loading && todaySessions.length > 0 ? (
+        <View style={styles.sessionBox}>
+          <Text style={styles.sessionBoxTitle}>Sessões de hoje</Text>
+          {todaySessions.map((s, idx) => (
+            <TouchableOpacity
+              key={s.sessionKey}
+              style={[styles.sessionRow, idx > 0 && styles.sessionRowSep]}
+              onPress={() =>
+                navigation.navigate('Aulas', {
+                  screen: 'SessionDetail',
+                  params: { sessionKey: s.sessionKey, sessionId: s.sessionId },
+                })
+              }
+              activeOpacity={0.85}
+            >
+              <View style={styles.sessionRowMain}>
+                <Text style={styles.sessionTema} numberOfLines={2}>
+                  {s.tema || '(Sem tema)'}
+                </Text>
+                <Text style={styles.sessionMeta}>
+                  Chamada: {s.doneCount}/{s.totalCount} turmas
+                  {s.isComplete ? ' · Concluída' : ''}
+                </Text>
+              </View>
+              <Text style={styles.sessionOpen}>Abrir</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+
       {ok && user && !initializing && stats.loading ? (
         <View style={styles.statsLoading}>
           <ActivityIndicator size="large" color={colors.babyBlue} />
@@ -160,13 +193,23 @@ export function HomeScreen({ navigation }) {
       <TouchableOpacity
         style={styles.cta}
         onPress={() => navigation.navigate('Chamada', { screen: 'AttendanceHome' })}
+        accessibilityHint="Cria aula para todas as turmas e abre a sessão na aba Aulas"
         activeOpacity={0.85}
       >
         <Text style={styles.ctaText}>Iniciar nova aula</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.ctaSecondary}
+        onPress={() => navigation.navigate('Aulas', { screen: 'SessionsList' })}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.ctaSecondaryText}>Ver todas as aulas e sessões</Text>
+      </TouchableOpacity>
+
       <Text style={styles.sub}>
-        Os totais consideram todas as turmas com aula na data de hoje. Detalhe na aba Chamada.
+        Os totais consideram todas as turmas com aula na data de hoje. Sessões e progresso da chamada
+        ficam na aba Aulas; criação na aba Chamada.
       </Text>
     </ScrollView>
   );
@@ -214,5 +257,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaText: { color: colors.navy, fontWeight: '800', fontSize: 16 },
+  ctaSecondary: {
+    marginTop: 10,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.babyBlueMuted,
+    backgroundColor: colors.white,
+  },
+  ctaSecondaryText: { color: colors.navy, fontWeight: '700', fontSize: 15 },
+  sessionBox: {
+    marginTop: 14,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+  },
+  sessionBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  sessionRowSep: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sessionRowMain: { flex: 1, paddingRight: 8 },
+  sessionTema: { fontSize: 15, fontWeight: '700', color: colors.navy },
+  sessionMeta: { marginTop: 4, fontSize: 12, color: colors.textMuted },
+  sessionOpen: { fontSize: 14, fontWeight: '800', color: colors.babyBlueMuted },
   sub: { marginTop: 16, color: colors.textMuted, lineHeight: 22, fontSize: 13 },
 });

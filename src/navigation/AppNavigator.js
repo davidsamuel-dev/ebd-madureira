@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { ClassesProvider } from '../context/ClassesContext';
 import { AttendanceStack } from './AttendanceStack';
+import { LessonsStack } from './LessonsStack';
 import { AuthLoadingScreen } from '../screens/AuthLoadingScreen';
 import { ClassesStack } from './ClassesStack';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -20,6 +21,7 @@ const Tab = createBottomTabNavigator();
 const TAB_ICONS = {
   Home: { outline: 'home-outline', filled: 'home' },
   Turmas: { outline: 'people-outline', filled: 'people' },
+  Aulas: { outline: 'calendar-outline', filled: 'calendar' },
   Chamada: { outline: 'clipboard-outline', filled: 'clipboard' },
   Relatórios: { outline: 'stats-chart-outline', filled: 'stats-chart' },
 };
@@ -60,6 +62,11 @@ function MainTabs() {
         name="Turmas"
         component={ClassesStack}
         options={{ title: 'Turmas', headerShown: false }}
+      />
+      <Tab.Screen
+        name="Aulas"
+        component={LessonsStack}
+        options={{ title: 'Aulas', headerShown: false }}
       />
       <Tab.Screen
         name="Chamada"
